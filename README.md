@@ -34,9 +34,16 @@ $cd annotation
 $ls  </pre>
 
 <h2 id="Second_Point_Header">Downloading the data</h2>
-Besides our RNA-Seq reads, the only other data required for our annotation is the <i>Arabidopsis thaliana</i> reference genome (this does not include the databases installed with the various software used in this tutorial). While the reference genome may be found on the NCBI website, we will be using <a href="ftp://ftp.ensemblgenomes.org/pub/plants/release-38/fasta/arabidopsis_thaliana/dna/">Ensembl</a>. After clicking on the link, you will see a variety of file types, including "rm", "sm", and "toplevel". The "rm" and "sm" are the hard-masked and soft-masked fastas, respectively. Hard-masked fastas have replaced low complexity and genomic repetition region nucleotides with 'N', preventing these regions from aligning and mapping during the various stages of analysis. Soft-masked fastas have replaced low complexity and genomic repetition region nucleotides with the lower-case correspondents, such as "aatgcgt" rather than "AATGCGT". Lastly, "toplevel" files contain the haplotype information of the sampled organisms. Because we will be masking the genome ourselves, we are only interested in the raw fastas, which we will download with the "wget" command and the "&#42;" operator:
+Besides our RNA-Seq reads, the only other data required for our annotation is the <i>Arabidopsis thaliana</i> reference genome (this does not include the databases installed with the various software used in this tutorial). While the reference genome may be found on the NCBI website, we will be using <a href="ftp://ftp.ensemblgenomes.org/pub/plants/release-38/fasta/arabidopsis_thaliana/dna/">Ensembl</a>. After clicking on the link, you will see a variety of file types, including "rm", "sm", and "toplevel". The "rm" and "sm" are the hard-masked and soft-masked fastas, respectively. Hard-masked fastas have replaced low complexity and genomic repetition region nucleotides with 'N', preventing these regions from aligning and mapping during the various stages of analysis. Soft-masked fastas have replaced low complexity and genomic repetition region nucleotides with the lower-case correspondents, such as "aatgcgt" rather than "AATGCGT". Lastly, "toplevel" files contain the haplotype information of the sampled organisms. Because we will be masking the genome ourselves, we are only interested in the raw fastas, which we will download with the "wget" command and the "&#42;" operator.
 
-<pre style="color: silver; background: black;">wget ftp://ftp.ensemblgenomes.org/pub/plants/release-38/fasta/arabidopsis_thaliana/dna/&#42;.dna.chromosome."[0-9]".fa.gz</pre>
+<pre style="color: silver; background: black;">wget ftp://ftp.ensemblgenomes.org/pub/plants/release-38/fasta/arabidopsis_thaliana/dna/&#42;.dna.chromosome."[0-9]".fa.gz
+ls
+Arabidopsis_thaliana.TAIR10.dna.chromosome.1.fa.gz
+Arabidopsis_thaliana.TAIR10.dna.chromosome.2.fa.gz
+Arabidopsis_thaliana.TAIR10.dna.chromosome.3.fa.gz
+Arabidopsis_thaliana.TAIR10.dna.chromosome.4.fa.gz
+Arabidopsis_thaliana.TAIR10.dna.chromosome.5.fa.gz
 
-The "&#42;" operator effectively instructs "wget" to accept any file with the succeeding file-name, "dna.chromosome", while "[0-9]" instructs "wget" to retrieve only those files whose file-name succeeding "&#42;.dna.chromosome" is a number 0-9 followed by ".fa.gz". Let's look at our directory now:
+</pre>
 
+The "&#42;" operator effectively instructs "wget" to accept any file with the succeeding file-name, "dna.chromosome", while "[0-9]" instructs "wget" to retrieve only those files whose file-name succeeding "&#42;.dna.chromosome" is a number 0-9 followed by ".fa.gz".
