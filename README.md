@@ -144,11 +144,13 @@ Let's build our database using nano to create our Slurm script:
 #SBATCH --mail-type=END
 #SBATCH --mail-user=your.email@uconn.edu
 #SBATCH --mem=50G
-#SBATCH -o _%j.out
-#SBATCH -e _%j.err
+#SBATCH -o repeat_modeler_%j.out
+#SBATCH -e repeat_modeler_%j.err
 module load RepeatModeler
 gunzip &#42;.fa.gz
-BuildDatabase -name "athaliana_db" &#42;.fa
+cat &#42;.fa > athaliana.txt
+mv athaliana.txt athaliana.fa
+BuildDatabase -name "athaliana_db" -engine ncbi athaliana.fa
 
 
 
@@ -158,4 +160,55 @@ BuildDatabase -name "athaliana_db" &#42;.fa
 ^G Get Help  ^O WriteOut  ^R Read File ^Y Prev Page ^K Cut Text  ^C Cur Pos
 ^X Exit      ^J Justify   ^W Where Is  ^V Next Page ^U UnCut Text^T To Spell</pre>
 
-<pre style="color: silver; background: black;">sbatch repeat_modeler_db.sh</pre>
+<pre style="color: silver; background: black;">sbatch repeat_modeler_db.sh
+ls
+Arabidopsis_thaliana.TAIR10.dna.chromosome.1.fa  Arabidopsis_thaliana.TAIR10.dna.chromosome.4.fa  athaliana_db.nin  athaliana_db.nog          athaliana.fa          SRR6852085.fastq
+Arabidopsis_thaliana.TAIR10.dna.chromosome.2.fa  Arabidopsis_thaliana.TAIR10.dna.chromosome.5.fa  athaliana_db.nnd  athaliana_db.nsq          repeat_modeler_db.sh  SRR6852086.fastq
+Arabidopsis_thaliana.TAIR10.dna.chromosome.3.fa  athaliana_db.nhr                                 athaliana_db.nni  athaliana_db.translation  sra_download.sh</pre>
+
+We are now ready to run the RepeatModeler. But first, let's have a look at our options:
+
+<pre style="color: silver; background: black;">RepeatModeler
+No database indicated
+
+NAME
+    RepeatModeler - Model repetitive DNA
+
+SYNOPSIS
+      RepeatModeler [-options] -database <XDF Database>
+
+DESCRIPTION
+    The options are:
+
+    -h(elp)
+        Detailed help
+
+    -database
+        The prefix name of a XDF formatted sequence database containing the
+        genomic sequence to use when building repeat models. The database
+        may be created with the WUBlast "xdformat" utility or with the
+        RepeatModeler wrapper script "BuildXDFDatabase".
+
+    -engine <abblast|wublast|ncbi>
+        The name of the search engine we are using. I.e abblast/wublast or
+        ncbi (rmblast version).
+
+    -pa #
+        Specify the number of shared-memory processors available to this
+        program. RepeatModeler will use the processors to run BLAST searches
+        in parallel. i.e on a machine with 10 cores one might use 1 core for
+        the script and 9 cores for the BLAST searches by running with "-pa
+        9".
+
+    -recoverDir <Previous Output Directory>
+        If a run fails in the middle of processing, it may be possible
+        recover some results and continue where the previous run left off.
+        Simply supply the output directory where the results of the failed
+        run were saved and the program will attempt to recover and continue
+        the run.</pre>
+	
+The options are quite straightforward. Let's go ahead and run our RepeatModeler process (the "nano" initialization of the Slurm script will be excluded from this point forward. <b>DO NOT SUBMIT THESE VIA THE BASH TERMINAL</b>. You must still initialize your Slurm script, or, alternatively, submit the batch files provided in this repository after addending your own email).
+
+<pre style="color: silver; background: black;">
+module load RepeatModeler
+RepeatModeler -engine ncbi -pa 8 -database athaliana_db</pre>
