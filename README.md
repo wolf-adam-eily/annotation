@@ -209,7 +209,19 @@ DESCRIPTION
 	
 The options are quite straightforward. Let's go ahead and run our RepeatModeler process (the "nano" initialization of the Slurm script will be excluded from this point forward. <b>DO NOT SUBMIT THESE VIA THE BASH TERMINAL</b>. You must still initialize your Slurm script, or, alternatively, submit the batch files provided in this repository after addending your own email).
 
-<pre style="color: silver; background: black;">
+<pre style="color: silver; background: black;">nano repeatmodeler.sh
+    GNU nano 2.3.1                                                     File: repeatmaskrun.sh                                             
+#!/bin/bash
+#SBATCH --job-name=repeatmodelerhimem
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH -c 30
+#SBATCH --partition=himem3
+#SBATCH --mail-type=END
+#SBATCH --mail-user=your.email@uconn.edu
+#SBATCH --mem=256G
+#SBATCH -o repeatmaskrun_%j.out
+#SBATCH -e repeatmaskrun_%j.err
 module load RepeatModeler
 RepeatModeler -engine ncbi -pa 30 -database athaliana_db</pre>
 </pre>
