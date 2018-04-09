@@ -84,11 +84,11 @@ We may now begin writing our "&#35;SBATCH" arguments followed by our actual scri
 #SBATCH --job-name=sra_download.sh
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -c 8
-#SBATCH --partition=general
+#SBATCH -c 30
+#SBATCH --partition=himem
 #SBATCH --mail-type=END
 #SBATCH --mail-user=your.email@uconn.edu
-#SBATCH --mem=50G
+#SBATCH --mem=256G
 #SBATCH -o sra_download_%j.out
 #SBATCH -e sra_download_%j.err
 module load sratoolkit
@@ -211,4 +211,102 @@ The options are quite straightforward. Let's go ahead and run our RepeatModeler 
 
 <pre style="color: silver; background: black;">
 module load RepeatModeler
-RepeatModeler -engine ncbi -pa 8 -database athaliana_db</pre>
+RepeatModeler -engine ncbi -pa 30 -database athaliana_db</pre>
+</pre>
+
+This process may run for over a day, so be patient and do not submit the job more than once! After completion of the run, there should be a directory called RM&#42;. Let's have a look at its contents:
+
+<pre style="color: silver; background: black;">cd RM&#42;
+ls
+consensi.fa             consensi.fa.masked  round-2  round-4
+consensi.fa.classified  round-1             round-3  round-5
+</pre>
+
+Per the RepeatModeler <a href="http://www.repeatmasker.org/RepeatModeler/">webpage</a>, we see each file as:
+<pre style="color: silver; background: black;">          round-1/
+               sampleDB-&#35;.fa       : The genomic sample used in this round
+               sampleDB-&#35;.fa.lfreq : The RepeatScout lmer table
+               sampleDB-&#35;.fa.rscons: The RepeatScout generated consensi
+               sampleDB-&#35;.fa.rscons.filtered : The simple repeat/low
+                                               complexity filtered
+                                               version of &#42;.rscons
+               consensi.fa         : The final consensi db for this round
+               family-&#35;-cons.html  : A visualization of the model
+                                     refinement process.  This can be opened
+                                     in web browsers that support zooming.
+                                     ( such as firefox ).
+                                     This is used to track down problems
+                                     with the Refiner.pl
+               index.html          : A HTML index to all the family-&#35;-cons.html
+                                     files.
+          round-2/
+               sampleDB-&#35;.fa       : The genomic sample used in this round
+               msps.out            : The output of the sample all-vs-all
+                                     comparison
+               summary/            : The RECON output directory
+                    eles           : The RECON family output
+               consensi.fa         : Same as above
+               family-&#35;-cons.html  : Same as above
+               index.html          : Same as above
+          round-3/
+               Same as round-2
+           ..
+          round-n/</pre>
+We see that we have information about the genomic sample used in each round, a consensus seqeuence frequency matrix for the genomic sample, the generated predicted consensus sequences, and visualizations. This format is repeated for various rounds with summaries of all rounds compiled in the summary directories. Our complete, predicted consensus sequences may be found in the various "consensi" fastas. Now that we have generated our consensus sequences, we are ready to mask our genome using the RepeatMasker.
+
+<h2 id="Fourth_Point_Header">Masking Regions of Genomic Repetition with RepeatMasker</h2>
+Now that we have identified our consensus sequences, we are ready to mask them using the RepeatMasker. Let's have a look at the RepeatMasker options:
+
+<pre style="color: silver; background: black;">module load RepeatMasker
+RepeatMasker
+::small preview of options::
+   -small
+       Returns complete .masked sequence in lower case
+
+   -xsmall
+       Returns repetitive regions in lowercase (rest capitals) rather than
+       masked
+
+   -x  Returns repetitive regions masked with Xs rather than Ns</pre>
+   
+We want to softmask only repetitive regions, so we will be using the option "xsmall". Let's initialize our slurm script:
+  
+<pre style="color: silver; background: black;">nano repeatmaskrun.sh
+    GNU nano 2.3.1                                                     File: repeatmaskrun.sh                                                                                                                 
+
+#!/bin/bash
+#SBATCH --job-name=repeatmaskrun
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH -c 8
+#SBATCH --partition=general
+#SBATCH --mail-type=END
+#SBATCH --mail-user=wolf.adam.eily@gmail.com
+#SBATCH --mem=50G
+#SBATCH -o repeatmaskrun_%j.out
+#SBATCH -e repeatmaskrun_%j.err
+module load RepeatMasker
+RepeatMasker -xsmall consensi.fa
+
+
+                                                                                             [ Read 13 lines ]
+^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
+^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell
+</pre>
+
+We now run our script:
+<pre style="color: silver; background: black;">sbatch repeatmaskrun.sh
+ls
+consensi.fa      consensi.fa.classified  consensi.fa.out                            consensi.fa.tbl           repeatmaskrun_341216.out  round-1  round-3  round-5
+consensi.fa.cat  consensi.fa.masked      consensi.fa.preMonApr91345472018.RMoutput  repeatmaskrun_341216.err  repeatmaskrun.sh          round-2  round-4
+cd consensi.fa.preMon*
+ls
+consensi.fa.masked
+</pre>
+
+After looking at the "consensi.fa.masked" sequences produced by RepeatModeler and RepeatMasker, we see that these are the same fasta. While this may seem redundant, it is a good idea to run both RepeatModeler and RepeatMasker, using the RepeatMasker consensus fasta. The reason for this being that RepeatModeler may produce a hard-masked fasta while it is preferred to use a soft-mask, or vice versa. Let's go ahead and move our RepeatMasker consensus fasta to our main tutorial directory.
+
+<h2 id="Fifth_Point_Header">Mapping RNA-Seq reads with HISAT2</h2>
+We will now be mapping our RNA-Seq reads to the masked genome using <a href="https://github.com/infphilo/hisat2/blob/master/MANUAL">HISAT2</a>. First, let's have a look at our options:
+<pre style="color: silver; background: black;">module load HISAT2
+HISAT2
