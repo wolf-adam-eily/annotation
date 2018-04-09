@@ -281,7 +281,7 @@ We want to softmask only repetitive regions, so we will be using the option "xsm
 #SBATCH -c 8
 #SBATCH --partition=general
 #SBATCH --mail-type=END
-#SBATCH --mail-user=wolf.adam.eily@gmail.com
+#SBATCH --mail-user=
 #SBATCH --mem=50G
 #SBATCH -o repeatmaskrun_%j.out
 #SBATCH -e repeatmaskrun_%j.err
@@ -307,6 +307,69 @@ consensi.fa.masked
 After looking at the "consensi.fa.masked" sequences produced by RepeatModeler and RepeatMasker, we see that these are the same fasta. While this may seem redundant, it is a good idea to run both RepeatModeler and RepeatMasker, using the RepeatMasker consensus fasta. The reason for this being that RepeatModeler may produce a hard-masked fasta while it is preferred to use a soft-mask, or vice versa. Let's go ahead and move our RepeatMasker consensus fasta to our main tutorial directory.
 
 <h2 id="Fifth_Point_Header">Mapping RNA-Seq reads with HISAT2</h2>
-We will now be mapping our RNA-Seq reads to the masked genome using <a href="https://github.com/infphilo/hisat2/blob/master/MANUAL">HISAT2</a>. First, let's have a look at our options:
-<pre style="color: silver; background: black;">module load HISAT2
-HISAT2
+We will now be mapping our RNA-Seq reads to the masked genome using <a href="https://github.com/infphilo/hisat2/blob/master/MANUAL">HISAT2</a>. Before aligning our reads, we need to build an index of our masked genome. First, let's have a look at our options:
+<pre style="color: silver; background: black;">module load hisat2
+hisat2-build
+-bash-4.2$ hisat2-build
+No input sequence or sequence file specified!
+HISAT2 version 2.1.0 by Daehwan Kim (infphilo@gmail.com, http://www.ccb.jhu.edu/people/infphilo)
+Usage: hisat2-build [options]* <reference_in> <ht2_index_base>
+    reference_in            comma-separated list of files with ref sequences
+    hisat2_index_base       write ht2 data to files with this dir/basename</pre>
+We initialize and run the following script:
+<pre style="color: silver; background: black;">nano indexbuild.sh
+  GNU nano 2.3.1                                                      File: indexbuild.sh                                                                                                                   
+
+#!/bin/bash
+#SBATCH --job-name=indexbuild
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH -c 8
+#SBATCH --partition=general
+#SBATCH --mail-type=END
+#SBATCH --mail-user=
+#SBATCH --mem=50G
+#SBATCH -o indexbuild_%j.out
+#SBATCH -e indexbuild_%j.err
+module load hisat2
+hisat2-build consensi.fa.masked arabidopsis_masked
+
+                                                                                             [ Read 13 lines ]
+^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
+^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell</pre>
+<pre style="color: silver; background: black;">sbatch indexbuild.sh
+ls
+arabidopsis_masked.1.ht2  arabidopsis_masked.7.ht2                         Arabidopsis_thaliana.TAIR10.dna.chromosome.5.fa  athaliana_db.nsq          indexbuild.sh                  sra_download.sh
+arabidopsis_masked.2.ht2  arabidopsis_masked.8.ht2                         athaliana_db.nhr                                 athaliana_db.translation  repeat_modeler_db.sh           SRR6852085.fastq
+arabidopsis_masked.3.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.1.fa  athaliana_db.nin                                 athaliana.fa              repeat_modeler_run_319474.err  SRR6852086.fastq
+arabidopsis_masked.4.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.2.fa  athaliana_db.nnd                                 consensi.fa.masked        repeat_modeler_run_319474.out  unaligned.fa
+arabidopsis_masked.5.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.3.fa  athaliana_db.nni                                 indexbuild_341244.err     repeat_modeler_run.sh
+arabidopsis_masked.6.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.4.fa  athaliana_db.nog                                 indexbuild_341244.out     RM_2782.FriMar301225362018</pre>
+
+We have a few goals to achieve in our script. We want to align our reads to our masked index, convert the SAM output to its binary, and lastly sort the BAM file. The script is going to be presented here, but its theory will not due to it has already been posted <a href="https://github.com/wolf-adam-eily/refseq_diffexp_funct_annotation_uconn#Fourth_Point_Header">here</a>. RNA-Seq alignment is perhaps the most common operation a bioinformatician will perform in her work. Therefore, it is advised to truly familiarize yourself with the pipeline, as you will most likely be performing it several times per week:
+
+<pre style="color: silver; background: black;">nano hisat2run.sh
+  GNU nano 2.3.1                                                      File: hisat2run.sh                                                                                                                    
+
+#!/bin/bash
+#SBATCH --job-name=hisat2run
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH -c 8
+#SBATCH --partition=general
+#SBATCH --mail-type=END
+#SBATCH --mail-user=
+#SBATCH --mem=50G
+#SBATCH -o hisat2run_%j.out
+#SBATCH -e hisat2run_%j.err
+module load hisat2
+module load samtools
+hisat2 -x arabidopsis_masked -U SRR6852085.fastq -p 8 -S SRR6852085.sam
+samtools view -@ 8 -uhS SRR6852085.sam | samtools sort -@ 8 -o sorted_SRR6852085.bam
+hisat2 -x arabidopsis_masked -U SRR6852086.fastq -p 8 -S SRR6852086.sam
+samtools view -@ 8 -uhS SRR6852086.sam | samtools sort -@ 8 -o sorted_SRR6852086.bam
+                                                                                             [ Read 17 lines ]
+^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
+^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell</pre>
+<pre style="color: silver; background: black;">sbatch hisat2run.sh
+ls
