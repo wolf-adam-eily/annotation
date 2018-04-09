@@ -255,11 +255,13 @@ Per the RepeatModeler <a href="http://www.repeatmasker.org/RepeatModeler/">webpa
 We see that we have information about the genomic sample used in each round, a consensus seqeuence frequency matrix for the genomic sample, the generated predicted consensus sequences, and visualizations. This format is repeated for various rounds with summaries of all rounds compiled in the summary directories. Our complete, predicted consensus sequences may be found in the various "consensi" fastas. Now that we have generated our consensus sequences, we are ready to mask our genome using the RepeatMasker.
 
 <h2 id="Fourth_Point_Header">Masking Regions of Genomic Repetition with RepeatMasker</h2>
-Now that we have identified our consensus sequences, we are ready to mask them using the RepeatMasker. Let's have a look at the RepeatMasker options:
+Now that we have identified our consensus sequences, we are ready to mask them using the RepeatMasker. RepeatMasker requires two arguments, a library of repetitive regions for your organism and the genome fasta for your organism. RepeatMasker will align the repetitive regions to your genome followed by masking those repetitive regions within your genome appropriately. Let's have a look at the RepeatMasker options:
 
 <pre style="color: silver; background: black;">module load RepeatMasker
 RepeatMasker
 ::small preview of options::
+   -lib
+   	Rather than use a database, use your own RepeatModeler consensus fasta to ammend your genome
    -small
        Returns complete .masked sequence in lower case
 
@@ -272,22 +274,20 @@ RepeatMasker
 We want to softmask only repetitive regions, so we will be using the option "xsmall". Let's initialize our slurm script:
   
 <pre style="color: silver; background: black;">nano repeatmaskrun.sh
-    GNU nano 2.3.1                                                     File: repeatmaskrun.sh                                                                                                                 
-
+    GNU nano 2.3.1                                                     File: repeatmaskrun.sh                                             
 #!/bin/bash
-#SBATCH --job-name=repeatmaskrun
+#SBATCH --job-name=repeatmaskrunhimem
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -c 8
-#SBATCH --partition=general
+#SBATCH -c 16
+#SBATCH --partition=himem3
 #SBATCH --mail-type=END
-#SBATCH --mail-user=
-#SBATCH --mem=50G
+#SBATCH --mail-user=your.email@uconn.edu
+#SBATCH --mem=256G
 #SBATCH -o repeatmaskrun_%j.out
 #SBATCH -e repeatmaskrun_%j.err
 module load RepeatMasker
-RepeatMasker -xsmall consensi.fa
-
+RepeatMasker -pa 16 -lib consensi.fa -xsmall /home/CAM/your_username/annotation_tutorial/athaliana.fa
 
                                                                                              [ Read 13 lines ]
 ^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
@@ -296,15 +296,31 @@ RepeatMasker -xsmall consensi.fa
 
 We now run our script:
 <pre style="color: silver; background: black;">sbatch repeatmaskrun.sh
+cd /home/CAM/your_username/annotation_tutorial/
 ls
-consensi.fa      consensi.fa.classified  consensi.fa.out                            consensi.fa.tbl           repeatmaskrun_341216.out  round-1  round-3  round-5
-consensi.fa.cat  consensi.fa.masked      consensi.fa.preMonApr91345472018.RMoutput  repeatmaskrun_341216.err  repeatmaskrun.sh          round-2  round-4
-cd consensi.fa.preMon*
-ls
-consensi.fa.masked
+athaliana.fa
+athaliana.fa.cat.gz
+athaliana.fa.masked
+athaliana.fa.ori.out
+athaliana.fa.out
+athaliana.fa.tbl
 </pre>
 
-After looking at the "consensi.fa.masked" sequences produced by RepeatModeler and RepeatMasker, we see that these are the same fasta. While this may seem redundant, it is a good idea to run both RepeatModeler and RepeatMasker, using the RepeatMasker consensus fasta. The reason for this being that RepeatModeler may produce a hard-masked fasta while it is preferred to use a soft-mask, or vice versa. Let's go ahead and move our RepeatMasker consensus fasta to our main tutorial directory.
+For information about the files see section 4 of this RepeatMasker <a href="http://sebastien.tempel.free.fr/Boulot/UsingRepeatMasker.pdf">manual</a>. We are mainly interested in the masked fasta, let's give it a quick look:
+
+<pre style="color: silver; background: black;">head athaliana.fa.masked
+>1 dna:chromosome chromosome:TAIR10:1:1:30427671:1 REF
+ccctaaaccctaaaccctaaaccctaaacctctgaatccttaatccctaa
+atccctaaatctttaaatcctacatccatgaatccctaaatacctaattc
+cctaaacccgaaaccGGTTTCTCTGGTTGAAAATCATTGTGTATATAATG
+ATAATTTTATCGTTTTTATGTAATTGCTTATTGTTGTGTGTAGATTTTTT
+AAAAATATCATTTGAGGTCAATACAAATCCTATTTCTTGTGGTTTTCTTT
+CCTTCACTTAGCTATGGATGGTTTATCTTCATTTGTTATATTGGATACAA
+GCTTTGCTACGATCTACATTTGGGAATGTGAGTCTCTTATTGTAACCTTA
+GGGTTGGTTTATCTCAAGAATCTTATTAATTGTTTGGACTGTTTATGTTT
+GGACATTTATTGTCATTCTTACTCCTTTGTGGAAATGTTTGTTCTATCAA</pre>
+
+Look at that! We have successfully soft-masked our genome!
 
 <h2 id="Fifth_Point_Header">Mapping RNA-Seq reads with HISAT2</h2>
 We will now be mapping our RNA-Seq reads to the masked genome using <a href="https://github.com/infphilo/hisat2/blob/master/MANUAL">HISAT2</a>. Before aligning our reads, we need to build an index of our masked genome. First, let's have a look at our options:
@@ -332,7 +348,7 @@ We initialize and run the following script:
 #SBATCH -o indexbuild_%j.out
 #SBATCH -e indexbuild_%j.err
 module load hisat2
-hisat2-build consensi.fa.masked arabidopsis_masked
+hisat2-build -p 8 athaliana.fa.masked arabidopsis_masked
 
                                                                                              [ Read 13 lines ]
 ^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
@@ -373,3 +389,11 @@ samtools view -@ 8 -uhS SRR6852086.sam | samtools sort -@ 8 -o sorted_SRR6852086
 ^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell</pre>
 <pre style="color: silver; background: black;">sbatch hisat2run.sh
 ls
+-bash-4.2$ ls
+arabidopsis_masked.1.ht2  arabidopsis_masked.8.ht2                         athaliana_db.nin          consensi.fa.masked     repeat_modeler_db.sh           sra_download.sh
+arabidopsis_masked.2.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.1.fa  athaliana_db.nnd          hisat2run_341268.err   repeat_modeler_run_319474.err  SRR6852085.fastq
+arabidopsis_masked.3.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.2.fa  athaliana_db.nni          hisat2run_341268.out   repeat_modeler_run_319474.out  SRR6852085.sam
+arabidopsis_masked.4.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.3.fa  athaliana_db.nog          hisat2run.sh           repeat_modeler_run.sh          SRR6852086.fastq
+arabidopsis_masked.5.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.4.fa  athaliana_db.nsq          indexbuild_341244.err  RM_2782.FriMar301225362018     SRR6852086.sam
+arabidopsis_masked.6.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.5.fa  athaliana_db.translation  indexbuild_341244.out  sorted_SRR6852085.bam          unaligned.fa
+arabidopsis_masked.7.ht2  athaliana_db.nhr                                 athaliana.fa              indexbuild.sh          sorted_SRR6852086.bam
