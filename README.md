@@ -29,8 +29,8 @@ It is important that after connecting via SSH the directory is set to
 before proceeding. Your home directory contains 10TB of storage and will not pollute the capacities of other users on the cluster. 
 
 The workflow may be cloned into the appropriate directory using the terminal command:
-<pre style="color: silver; background: black;">$git clone https://github.com/wolf-adam-eily/annotation.git
-$cd annotation
+<pre style="color: silver; background: black;">$git clone https://github.com/wolf-adam-eily/structural_annotation_for_assembled_genomes_xanadu.git
+$cd structural_annotation_for_assembled_genomes_xanadu
 $ls  </pre>
 
 <h2 id="Second_Point_Header">Downloading the data</h2>
@@ -338,7 +338,7 @@ RepeatMasker -pa 16 -lib consensi.fa -xsmall /home/CAM/your_username/annotation_
 
 We now run our script:
 <pre style="color: silver; background: black;">sbatch repeatmaskrun.sh
-cd /home/CAM/your_username/annotation_tutorial/
+cd /home/CAM/your_username/structural_annotation_for_assembled_genomes_xanadu/
 ls
 athaliana.fa
 athaliana.fa.cat.gz
