@@ -10,7 +10,7 @@ All steps have been provided for the UConn CBC Xanadu cluster here with appropr
 <li><a href="#Third_Point_Header">3 Identifying Regions of Genomic Repetition with RepeatModeler</a></li>
 <li><a href="#Fourth_Point_Header">4 Masking Regions of Genomic Repetition with RepeatMasker</a></li>
 <li><a href="#Fifth_Point_Header">5 Mapping RNA-Seq reads with HISAT2</a></li>
-<li><a href="#Sixth_Point_Header">6 BRAKER2: Identifying Genes with RNA-Seq data</a></li>
+<li><a href="#Sixth_Point_Header">6 BRAKER2: Identifying and Predicting Genes with RNA-Seq data</a></li>
 <li><a href="#EnTAP">7 EnTAP: Functional Annotation for Genomes</a></li>
  <li><a href="#Integration">8 Integrating the DE Results with the Annotation Results</a></li>
 <li><a href="#Citation">Citations</a></li>
@@ -422,10 +422,10 @@ We have a few goals to achieve in our script. We want to align our reads to our 
 #SBATCH -e hisat2run_%j.err
 module load hisat2
 module load samtools
-hisat2 -x arabidopsis_masked -1 trimmed_SRR6852085_1.fastq -2 trimmed_SRR6852085_2.fastq -p 8 -S SRR6852085.sam
-samtools view -@ 8 -uhS SRR6852085.sam | samtools sort -@ 8 -o sorted_SRR6852085.bam
-hisat2 -x arabidopsis_masked -1 trimmed_SRR6852086_1.fastq -2 trimmed_SRR6852085_2.fastq -p 8 -S SRR6852086.sam
-samtools view -@ 8 -uhS SRR6852086.sam | samtools sort -@ 8 -o sorted_SRR6852086.bam
+hisat2 -x arabidopsis_masked -1 trimmed_SRR6852085_1.fastq -2 trimmed_SRR6852085_2.fastq -p 16 -S SRR6852085.sam
+samtools view -@ 16 -uhS SRR6852085.sam | samtools sort -@ 16 -o sorted_SRR6852085.bam
+hisat2 -x arabidopsis_masked -1 trimmed_SRR6852086_1.fastq -2 trimmed_SRR6852085_2.fastq -p 16 -S SRR6852086.sam
+samtools view -@ 16 -uhS SRR6852086.sam | samtools sort -@ 16 -o sorted_SRR6852086
                                                                                              [ Read 17 lines ]
 ^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
 ^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell</pre>
@@ -435,3 +435,99 @@ ls</pre>
 We can view some simple statistics of our mappings using samtool's "flagstat" option. Let's see how our masking has affected our alignment profile:
 <pre style="color: silver; background: black;">module load flagstat
 samtools flagstat sorted_SRR6852085.bam
+34756336 + 0 in total (QC-passed reads + QC-failed reads)
+1004238 + 0 secondary
+0 + 0 supplementary
+0 + 0 duplicates
+32246430 + 0 mapped (92.78% : N/A)
+33752098 + 0 paired in sequencing
+16876049 + 0 read1
+16876049 + 0 read2
+29870128 + 0 properly paired (88.50% : N/A)
+30528672 + 0 with itself and mate mapped
+713520 + 0 singletons (2.11% : N/A)
+269532 + 0 with mate mapped to a different chr
+258958 + 0 with mate mapped to a different chr (mapQ>=5)
+
+samtools flagstat sorted_SRR6852086.bam
+34588524 + 0 in total (QC-passed reads + QC-failed reads)
+836428 + 0 secondary
+0 + 0 supplementary
+0 + 0 duplicates
+31990899 + 0 mapped (92.49% : N/A)
+33752096 + 0 paired in sequencing
+16876048 + 0 read1
+16876048 + 0 read2
+114832 + 0 properly paired (0.34% : N/A)
+28789736 + 0 with itself and mate mapped
+2364735 + 0 singletons (7.01% : N/A)
+22546350 + 0 with mate mapped to a different chr
+22047363 + 0 with mate mapped to a different chr (mapQ>=5)</pre>
+
+We see that we aligned a large proportion of our reads to our masked genomes. Because we know that the reads correspond to mRNA sequences extracted from the <i>A. thaliana</i> leaves, we can safely assume that each mapped region of our masked genome is either a part of or contains an active, functional gene. However, there is no guarantee that we have even accounted for <i>most</i> of the functional genes in our biosample. We may use what alignments we do have to train our machines to detect un-identified but plausible gene models in our genomes. This, combined with our alignments, provides a much more thorough annotation than the alignments alone. The reason for this is quite simple, consider if a set of genes by happenstance were untranscribed during sampling -- they would not become annotated if we used our alignments only even if these genes <i>are</i> active in our samples! 
+
+<h2 id="Sixth_Point_Header">BRAKER2: Identifying and Predicting Genes with RNA-Seq Data</h2>
+We will be using <a href="https://academic.oup.com/bioinformatics/article/32/5/767/1744611">BRAKER2</a> for our identification and prediction of gene models using our RNA-Seq data. BRAKER2 utilizes <a href="http://opal.biology.gatech.edu/GeneMark/">GeneMark</a> as the unsupervised machine learning process which produces gene models without the need for any sample data. Following this step, <a href="http://bioinf.uni-greifswald.de/augustus/">AUGUSTUS</a>, a supervised machine learning process, is trained with the gene models provided by GeneMark, as well as the aligned RNA-Seq data. The symbiosis of these two processes enables for improved accuracy and sensititivy by providing a system against which it may check its own work. BRAKER requires writer privileges to the config directory. However, we cannot write in that path! To circumvent this we simply copy the AUGUSTUS executable path to our parent directory:
+<pre style="color: silver; background: black;">cp -rf /isg/shared/apps/augustus/3.2.3/ /home/CAM/your_username</pre>
+
+
+We are now ready to run our process and may see our options for BRAKER with the following code:
+
+<pre style="color: silver; background: black;">module load BRAKER
+braker.pl
+braker.pl     Pipeline for predicting genes with GeneMark-ET and AUGUSTUS with
+            RNA-Seq
+
+SYNOPSIS
+
+braker.pl [OPTIONS] --genome=genome.fa --bam=rnaseq.bam
+
+INPUT FILE OPTIONS
+
+--genome=genome.fa                  fasta file with DNA sequences
+--bam=rnaseq.bam                    bam file with spliced alignments from 
+                                    RNA-Seq
+--softmasking                       Softmasking option for soft masked genome 
+                                    files. Set to 'on' or '1'</pre>
+BRAKER is a very computationally expensive tool. Because of this, we will want to max-out the capacity on a himem node of Xanadu. Let's initialize our Slurm script:
+<pre style="color: silver; background: black;">nano run_braker_run_SRR6852085.sh
+  GNU nano 2.3.1                                                 File: run_braker_run_SRR6852085.sh                                                                                               Modified  
+
+#!/bin/bash
+#SBATCH --job-name=run_braker_run_SRR6852085
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH -c 20
+#SBATCH --partition=himem5
+#SBATCH --mail-type=END
+#SBATCH --mail-user=
+#SBATCH --mem=256G
+#SBATCH -o run_braker_run_SRR6852085_%j.out
+#SBATCH -e run_braker_run_SRR6852085_%j.err
+module load BRAKER
+braker.pl --genome=athaliana.fa.masked --bam sorted_SRR6852085.bam --softmasking --AUGUSTUS_CONFIG_PATH=/home/CAM/your_username/3.2.3/config/
+
+^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
+^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell</pre>
+Because we have two distinct biosamples, we want to run BRAKER for both samples. We could place both sample runs in a single Slurm script. However, it is much more efficient to run these processes in parallel. Because of this, we initialize our second script:
+<pre style="color: silver; background: black;">nano run_braker_run_SRR6852085.sh
+  GNU nano 2.3.1                                                 File: run_braker_run_SRR6852086.sh                                                                                               Modified  
+
+#!/bin/bash
+#SBATCH --job-name=run_braker_run_SRR6852086
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH -c 20
+#SBATCH --partition=himem4
+#SBATCH --mail-type=END
+#SBATCH --mail-user=
+#SBATCH --mem=256g
+#SBATCH -o run_braker_run_SRR6852086_%j.out
+#SBATCH -e run_braker_run_SRR6852086_%j.err
+module load BRAKER
+braker.pl --genome=athaliana.fa.masked --bam sorted_SRR6852086.bam --softmasking --AUGUSTUS_CONFIG_PATH=/home/CAM/your_username/3.2.3/config/
+
+
+^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
+^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell</pre>
+Remember to run your processes on different nodes! Otherwise they are running consecutively and not concurrently! 
