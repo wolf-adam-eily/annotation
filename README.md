@@ -92,10 +92,11 @@ We may now begin writing our "&#35;SBATCH" arguments followed by our actual scri
 #SBATCH -o sra_download_%j.out
 #SBATCH -e sra_download_%j.err
 module load sratoolkit
-fastq-dump SRR6852085
-fastq-dump SRR6852086
-
-
+module load sickle
+fastq-dump --split-files SRR6852085
+fastq-dump --split-files SRR6852086
+sickle pe -s -t sanger -f SRR6852085_1.fastq -r SRR6852085_2.fastq -o trimmed_SRR6852085_1.fastq -p trimmed_SRR6852085_2.fastq -s trimmed_singles_6852085.fastq -q 30 -l 50
+sickle pe -s -t sanger -f SRR6852086_1.fastq -r SRR6852086_2.fastq -o trimmed_SRR6852086_1.fastq -p trimmed_SRR6852086_2.fastq -s trimmed_singles_6852086.fastq -q 30 -l 50
 
 
 
@@ -107,8 +108,37 @@ Press CTRL+X, "y", "enter" to save your script. You may only use software previo
 <pre style="color: silver; background: black;">module avail</pre>
 Because of this, we must load the modules we wish to use in each script. In this case, we are going to utilize the sratookit with the command:
 <pre style="color: silver; background: black;">module load sratoolkit</pre>
+It is important to know the layout of your SRA reads. For us, we are using paired-end reads. In future steps, we will want to be able to have two files, right-hand and left-hand, for each read which we can instruct our software to treat as paired. However, the SRA reads are compiled into a single file! To subvert this, we use the "--split-files" option of the sratoolkit to save each read in two separate files corresponding to the left-hand and right-hand reads. We also want to trim our files to only take high-quality reads. We use the program <a href="https://github.com/najoshi/sickle">sickle</a> to trim our files. For information on sickle and its options, you may visit the paired-end reference section of the github provided prior. To view the options for paired-end reads we use:
+<pre style="color: silver; background: black;">module load sickle
+sickle
+Usage: sickle <command> [options]
+
+Command:
+pe	paired-end sequence trimming
+se	single-end sequence trimming
+
+sickle pe
+
+Options:
+Paired-end separated reads
+--------------------------
+-f, --pe-file1, Input paired-end forward fastq file (Input files must have same number of records)
+-r, --pe-file2, Input paired-end reverse fastq file
+-o, --output-pe1, Output trimmed forward fastq file
+-p, --output-pe2, Output trimmed reverse fastq file. Must use -s option.</pre>
+
 Let's submit our script and view the results:
-<pre style="color: silver; background: black;">sbatch sra_download.sh</pre>
+<pre style="color: silver; background: black;">sbatch sra_download.sh
+ls
+SRR6852085_1.fastq
+SRR6852085_2.fastq
+SRR6852086_1.fastq
+SRR6852086_2.fastq
+trimmed_SRR6852085_1.fastq
+trimmed_SRR6852085_2.fastq
+trimmed_SRR6852086_1.fastq
+trimmed_SRR6852086_2.fastq
+</pre>
 
 <h2 id="Third_Point_Header">Identifying Regions of Genomic Repetition with RepeatModeler</h2>
 The largest proportion of genomes are low complexity regions, often consisting of <a href="https://en.wikipedia.org/wiki/Repeated_sequence_(DNA)">repetitive elements</a>. While these regions play crucial roles in safe-guarding the genome from deleterious mutations, novel protein synthesis, reproduction, and other processes, by virtue of their low-complexity they are quite common across organisms, even somewhat distantly unrelated organisms. Because of this, it can be hazardous to include these regions in alignment processes, as there is run a risk of false positives in the alignment profile. However, discarding low-complexity regions may also run the risk of removing high quality gene models alongside them. It is important to bear in mind your research goals and ambitions, choosing your modifications wisely. We will first be identifying our regions of low complexity using the <a href="http://www.repeatmasker.org/RepeatModeler/">RepeatModeler</a>. Before we identify our repeat regions, we must first compile our database using the "BuildDatabase" command of RepeatModeler. We may see our options with the following code in the bash:
@@ -392,20 +422,16 @@ We have a few goals to achieve in our script. We want to align our reads to our 
 #SBATCH -e hisat2run_%j.err
 module load hisat2
 module load samtools
-hisat2 -x arabidopsis_masked -U SRR6852085.fastq -p 8 -S SRR6852085.sam
+hisat2 -x arabidopsis_masked -1 trimmed_SRR6852085_1.fastq -2 trimmed_SRR6852085_2.fastq -p 8 -S SRR6852085.sam
 samtools view -@ 8 -uhS SRR6852085.sam | samtools sort -@ 8 -o sorted_SRR6852085.bam
-hisat2 -x arabidopsis_masked -U SRR6852086.fastq -p 8 -S SRR6852086.sam
+hisat2 -x arabidopsis_masked -1 trimmed_SRR6852086_1.fastq -2 trimmed_SRR6852085_2.fastq -p 8 -S SRR6852086.sam
 samtools view -@ 8 -uhS SRR6852086.sam | samtools sort -@ 8 -o sorted_SRR6852086.bam
                                                                                              [ Read 17 lines ]
 ^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
 ^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell</pre>
 <pre style="color: silver; background: black;">sbatch hisat2run.sh
-ls
--bash-4.2$ ls
-arabidopsis_masked.1.ht2  arabidopsis_masked.8.ht2                         athaliana_db.nin          consensi.fa.masked     repeat_modeler_db.sh           sra_download.sh
-arabidopsis_masked.2.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.1.fa  athaliana_db.nnd          hisat2run_341268.err   repeat_modeler_run_319474.err  SRR6852085.fastq
-arabidopsis_masked.3.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.2.fa  athaliana_db.nni          hisat2run_341268.out   repeat_modeler_run_319474.out  SRR6852085.sam
-arabidopsis_masked.4.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.3.fa  athaliana_db.nog          hisat2run.sh           repeat_modeler_run.sh          SRR6852086.fastq
-arabidopsis_masked.5.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.4.fa  athaliana_db.nsq          indexbuild_341244.err  RM_2782.FriMar301225362018     SRR6852086.sam
-arabidopsis_masked.6.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.5.fa  athaliana_db.translation  indexbuild_341244.out  sorted_SRR6852085.bam          unaligned.fa
-arabidopsis_masked.7.ht2  athaliana_db.nhr                                 athaliana.fa              indexbuild.sh          sorted_SRR6852086.bam
+ls</pre>
+
+We can view some simple statistics of our mappings using samtool's "flagstat" option. Let's see how our masking has affected our alignment profile:
+<pre style="color: silver; background: black;">module load flagstat
+samtools flagstat sorted_SRR6852085.bam
