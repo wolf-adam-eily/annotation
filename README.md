@@ -413,7 +413,7 @@ We have a few goals to achieve in our script. We want to align our reads to our 
 #SBATCH --job-name=hisat2run
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -c 8
+#SBATCH -c 16
 #SBATCH --partition=general
 #SBATCH --mail-type=END
 #SBATCH --mail-user=
@@ -510,7 +510,7 @@ braker.pl --genome=athaliana.fa.masked --bam sorted_SRR6852085.bam --softmasking
 ^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
 ^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell</pre>
 Because we have two distinct biosamples, we want to run BRAKER for both samples. We could place both sample runs in a single Slurm script. However, it is much more efficient to run these processes in parallel. Because of this, we initialize our second script:
-<pre style="color: silver; background: black;">nano run_braker_run_SRR6852085.sh
+<pre style="color: silver; background: black;">nano run_braker_run_SRR6852086.sh
   GNU nano 2.3.1                                                 File: run_braker_run_SRR6852086.sh                                                                                               Modified  
 
 #!/bin/bash
