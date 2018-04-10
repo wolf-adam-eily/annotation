@@ -24,7 +24,7 @@ In this tutorial we will be performing functional and structural annotation of <
 
 It is important that after connecting via SSH the directory is set to
 
-<pre style="color: silver; background: black;">cd /home/CAM/$your.user.name</pre> 
+<pre style="color: silver; background: black;">cd /home/CAM/$your.user.name/</pre> 
 
 before proceeding. Your home directory contains 10TB of storage and will not pollute the capacities of other users on the cluster. 
 
@@ -468,7 +468,7 @@ We see that we aligned a large proportion of our reads to our masked genomes. Be
 
 <h2 id="Sixth_Point_Header">BRAKER2: Identifying and Predicting Genes with RNA-Seq Data</h2>
 We will be using <a href="https://academic.oup.com/bioinformatics/article/32/5/767/1744611">BRAKER2</a> for our identification and prediction of gene models using our RNA-Seq data. BRAKER2 utilizes <a href="http://opal.biology.gatech.edu/GeneMark/">GeneMark</a> as the unsupervised machine learning process which produces gene models without the need for any sample data. Following this step, <a href="http://bioinf.uni-greifswald.de/augustus/">AUGUSTUS</a>, a supervised machine learning process, is trained with the gene models provided by GeneMark, as well as the aligned RNA-Seq data. The symbiosis of these two processes enables for improved accuracy and sensititivy by providing a system against which it may check its own work. BRAKER requires writer privileges to the config directory. However, we cannot write in that path! To circumvent this we simply copy the AUGUSTUS executable path to our parent directory:
-<pre style="color: silver; background: black;">cp -rf /isg/shared/apps/augustus/3.2.3/ /home/CAM/your_username</pre>
+<pre style="color: silver; background: black;">cp -rf /isg/shared/apps/augustus/3.2.3/ /home/CAM/your_username/</pre>
 
 
 We are now ready to run our process and may see our options for BRAKER with the following code:
