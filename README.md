@@ -34,19 +34,8 @@ $cd structural_annotation_for_assembled_genomes_xanadu
 $ls  </pre>
 
 <h2 id="Second_Point_Header">Downloading the data</h2>
-Besides our RNA-Seq reads, the only other data required for our annotation is the <i>Arabidopsis thaliana</i> reference genome (this does not include the databases installed with the various software used in this tutorial). While the reference genome may be found on the NCBI website, we will be using <a href="ftp://ftp.ensemblgenomes.org/pub/plants/release-38/fasta/arabidopsis_thaliana/dna/">Ensembl</a>. After clicking on the link, you will see a variety of file types, including "rm", "sm", and "toplevel". The "rm" and "sm" are the hard-masked and soft-masked fastas, respectively. Hard-masked fastas have replaced low complexity and genomic repetition region nucleotides with 'N', preventing these regions from aligning and mapping during the various stages of analysis. Soft-masked fastas have replaced low complexity and genomic repetition region nucleotides with the lower-case correspondents, such as "aatgcgt" rather than "AATGCGT". Lastly, "toplevel" files contain the haplotype information of the sampled organisms. Because we will be masking the genome ourselves, we are only interested in the raw fastas, which we will download with the "wget" command and the "&#42;" operator.
-
-<pre style="color: silver; background: black;">wget ftp://ftp.ensemblgenomes.org/pub/plants/release-38/fasta/arabidopsis_thaliana/dna/&#42;.dna.chromosome."[0-9]".fa.gz>
-</pre>
-
-The "&#42;" operator effectively instructs "wget" to accept any file with the succeeding file-name, "dna.chromosome", while "[0-9]" instructs "wget" to retrieve only those files whose file-name succeeding "&#42;.dna.chromosome" is a number 0-9 followed by ".fa.gz".
-
-<pre style="color: silver; background: black;">ls
-Arabidopsis_thaliana.TAIR10.dna.chromosome.1.fa.gz
-Arabidopsis_thaliana.TAIR10.dna.chromosome.2.fa.gz
-Arabidopsis_thaliana.TAIR10.dna.chromosome.3.fa.gz
-Arabidopsis_thaliana.TAIR10.dna.chromosome.4.fa.gz
-Arabidopsis_thaliana.TAIR10.dna.chromosome.5.fa.gz</pre>
+Besides our RNA-Seq reads, the only other data required for our annotation is the <i>Arabidopsis thaliana</i> reference genome (this does not include the databases installed with the various software used in this tutorial). While the reference genome may be found on the NCBI website, we will be using the un-annotated genome located on Xanadu. You can copy the reference genome to your directory with the following command:
+<pre style="color: silver; background: black;">cp /isg/shared/databases/alignerIndex/plant/Arabidopsis/thaliana/Athaliana_167_TAIR9.fa /home/CAM/$USER/structural_annotation_for_assembled_genomes_xanadu/athaliana.fa</pre>
 
 Now, we must download our RNA-Seq using the <a href="https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?view=toolkit_doc">SRA-toolkit</a>. We will be running this command as a <a href="https://bioinformatics.uconn.edu/resources-and-events/tutorials/xanadu/#Xanadu_6">Slurm scheduler</a> script. For more information, please visit the link provided. To initialize our Slurm script, we use the "nano" command as following:
 
@@ -177,14 +166,7 @@ Let's build our database using nano to create our Slurm script:
 #SBATCH -o repeat_modeler_%j.out
 #SBATCH -e repeat_modeler_%j.err
 module load RepeatModeler
-gunzip &#42;.fa.gz
-cat &#42;.fa > athaliana.txt
-mv athaliana.txt athaliana.fa
 BuildDatabase -name "athaliana_db" -engine ncbi athaliana.fa
-
-
-
-
 
 
 ^G Get Help  ^O WriteOut  ^R Read File ^Y Prev Page ^K Cut Text  ^C Cur Pos
@@ -192,9 +174,25 @@ BuildDatabase -name "athaliana_db" -engine ncbi athaliana.fa
 
 <pre style="color: silver; background: black;">sbatch repeat_modeler_db.sh
 ls
-Arabidopsis_thaliana.TAIR10.dna.chromosome.1.fa  Arabidopsis_thaliana.TAIR10.dna.chromosome.4.fa  athaliana_db.nin  athaliana_db.nog          athaliana.fa          SRR6852085.fastq
-Arabidopsis_thaliana.TAIR10.dna.chromosome.2.fa  Arabidopsis_thaliana.TAIR10.dna.chromosome.5.fa  athaliana_db.nnd  athaliana_db.nsq          repeat_modeler_db.sh  SRR6852086.fastq
-Arabidopsis_thaliana.TAIR10.dna.chromosome.3.fa  athaliana_db.nhr                                 athaliana_db.nni  athaliana_db.translation  sra_download.sh</pre>
+athaliana_db.nhr
+athaliana_db.nin
+athaliana_db.nni
+athaliana_db.nog
+athaliana_db.nsq
+athaliana_db.translation
+</pre>
+
+It is not important that you understand what each file represents. However, if you are interested in varying that all of your choromosomes were compiled, you may view the .translation file. It should look like:
+<pre style="color: silver; background: black;">head athaliana_db.translation
+Chr1	1
+Chr2	2
+Chr3	3
+Chr4	4
+Chr5	5
+ChrM	6
+ChrC	7</pre>
+
+We see that all seven chromosomes were succesffuly compiled!
 
 We are now ready to run the RepeatModeler. But first, let's have a look at our options:
 
@@ -245,7 +243,7 @@ The options are quite straightforward. Let's go ahead and run our RepeatModeler 
 #SBATCH --job-name=repeatmodelerhimem
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -c 30
+#SBATCH -c 32
 #SBATCH --partition=himem3
 #SBATCH --mail-type=END
 #SBATCH --mail-user=your.email@uconn.edu
@@ -253,7 +251,7 @@ The options are quite straightforward. Let's go ahead and run our RepeatModeler 
 #SBATCH -o repeatmaskrun_%j.out
 #SBATCH -e repeatmaskrun_%j.err
 module load RepeatModeler
-RepeatModeler -engine ncbi -pa 30 -database athaliana_db</pre>
+RepeatModeler -engine ncbi -pa 32 -database athaliana_db</pre>
 </pre>
 
 This process may run for over a day, so be patient and do not submit the job more than once! After completion of the run, there should be a directory called RM&#42;. Let's have a look at its contents:
@@ -313,7 +311,13 @@ RepeatMasker
 
    -x  Returns repetitive regions masked with Xs rather than Ns</pre>
    
-We want to softmask only repetitive regions, so we will be using the option "xsmall". Let's initialize our slurm script:
+We want to softmask only repetitive regions, so we will be using the option "xsmall". Notice that in our athaliana.fa file, the headers contain spaces. For future reference, that is asking for software errors in the future. Let's truncate our headers and remove the whitespaces. We can do that with the sed command:
+
+<pre style="color: silver; background: black;">sed -i 's/Chr1.&#42;/Chr1/g; s/Chr2.&#42;/Chr2/g; s/Chr3.&#42;/Chr3/g; s/Chr4.&#42;4/Chr4/g; s/Chr5.&#42;/Chr5/g; s/ChrM.&#42;/ChrM/g; s/ChrC.&#42;/ChrC/g;' athaliana.fa</pre>
+
+The -i option commands sed to edit the file in its place, requiring no new file, while 's/Chr1.&#42;/Chr1/g;' commands sed to replace all lines which begin with Chr1 with simply Chr1. We simply stack our replacement set within the quotes, separated by semi-colons. And voila! We are now ready to run RepeatMasker.
+
+Let's initialize our slurm script:
   
 <pre style="color: silver; background: black;">nano repeatmaskrun.sh
     GNU nano 2.3.1                                                     File: repeatmaskrun.sh                                             
@@ -321,15 +325,15 @@ We want to softmask only repetitive regions, so we will be using the option "xsm
 #SBATCH --job-name=repeatmaskrunhimem
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -c 16
+#SBATCH -c 10
 #SBATCH --partition=himem3
 #SBATCH --mail-type=END
 #SBATCH --mail-user=your.email@uconn.edu
-#SBATCH --mem=256G
+#SBATCH --mem=80G
 #SBATCH -o repeatmaskrun_%j.out
 #SBATCH -e repeatmaskrun_%j.err
 module load RepeatMasker
-RepeatMasker -pa 16 -lib consensi.fa -xsmall /home/CAM/your_username/annotation_tutorial/athaliana.fa
+RepeatMasker -pa 10 -lib consensi.fa -xsmall /home/CAM/your_username/annotation_tutorial/athaliana.fa
 
                                                                                              [ Read 13 lines ]
 ^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
@@ -351,7 +355,7 @@ athaliana.fa.tbl
 For information about the files see section 4 of this RepeatMasker <a href="http://sebastien.tempel.free.fr/Boulot/UsingRepeatMasker.pdf">manual</a>. We are mainly interested in the masked fasta, let's give it a quick look:
 
 <pre style="color: silver; background: black;">head athaliana.fa.masked
->1 dna:chromosome chromosome:TAIR10:1:1:30427671:1 REF
+>Chr1
 ccctaaaccctaaaccctaaaccctaaacctctgaatccttaatccctaa
 atccctaaatctttaaatcctacatccatgaatccctaaatacctaattc
 cctaaacccgaaaccGGTTTCTCTGGTTGAAAATCATTGTGTATATAATG
@@ -397,14 +401,15 @@ hisat2-build -p 8 athaliana.fa.masked arabidopsis_masked
 ^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell</pre>
 <pre style="color: silver; background: black;">sbatch indexbuild.sh
 ls
-arabidopsis_masked.1.ht2  arabidopsis_masked.7.ht2                         Arabidopsis_thaliana.TAIR10.dna.chromosome.5.fa  athaliana_db.nsq          indexbuild.sh                  sra_download.sh
-arabidopsis_masked.2.ht2  arabidopsis_masked.8.ht2                         athaliana_db.nhr                                 athaliana_db.translation  repeat_modeler_db.sh           SRR6852085.fastq
-arabidopsis_masked.3.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.1.fa  athaliana_db.nin                                 athaliana.fa              repeat_modeler_run_319474.err  SRR6852086.fastq
-arabidopsis_masked.4.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.2.fa  athaliana_db.nnd                                 consensi.fa.masked        repeat_modeler_run_319474.out  unaligned.fa
-arabidopsis_masked.5.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.3.fa  athaliana_db.nni                                 indexbuild_341244.err     repeat_modeler_run.sh
-arabidopsis_masked.6.ht2  Arabidopsis_thaliana.TAIR10.dna.chromosome.4.fa  athaliana_db.nog                                 indexbuild_341244.out     RM_2782.FriMar301225362018</pre>
+arabidopsis_masked.1.ht2
+arabidopsis_masked.2.ht2
+arabidopsis_masked.3.ht2
+arabidopsis_masked.4.ht2
+arabidopsis_masked.5.ht2
+arabidopsis_masked.6.ht2
+arabidopsis_masked.7.ht2</pre>
 
-We have a few goals to achieve in our script. We want to align our reads to our masked index, convert the SAM output to its binary, and lastly sort the BAM file. The script is going to be presented here, but its theory will not due to it has already been posted <a href="https://github.com/wolf-adam-eily/refseq_diffexp_funct_annotation_uconn#Fourth_Point_Header">here</a>. RNA-Seq alignment is perhaps the most common operation a bioinformatician will perform in her work. Therefore, it is advised to truly familiarize yourself with the pipeline, as you will most likely be performing it several times per week:
+We have a few goals to achieve in our script. We want to align our reads to our masked index, convert the SAM output to its binary, and lastly sort the BAM files and merge them into a single BAM file. The script is going to be presented here, but its theory will not due to its posting <a href="https://github.com/wolf-adam-eily/refseq_diffexp_funct_annotation_uconn#Fourth_Point_Header">here</a>(where you can learn why we must build an index, as well). RNA-Seq alignment is perhaps the most common operation a bioinformatician will perform in her work. Therefore, it is advised to truly familiarize yourself with the pipeline, as you will most likely be performing it several times per week:
 
 <pre style="color: silver; background: black;">nano hisat2run.sh
   GNU nano 2.3.1                                                      File: hisat2run.sh                                                                                                                    
@@ -417,7 +422,7 @@ We have a few goals to achieve in our script. We want to align our reads to our 
 #SBATCH --partition=general
 #SBATCH --mail-type=END
 #SBATCH --mail-user=
-#SBATCH --mem=50G
+#SBATCH --mem=100G
 #SBATCH -o hisat2run_%j.out
 #SBATCH -e hisat2run_%j.err
 module load hisat2
@@ -425,7 +430,8 @@ module load samtools
 hisat2 -x arabidopsis_masked -1 trimmed_SRR6852085_1.fastq -2 trimmed_SRR6852085_2.fastq -p 16 -S SRR6852085.sam
 samtools view -@ 16 -uhS SRR6852085.sam | samtools sort -@ 16 -o sorted_SRR6852085.bam
 hisat2 -x arabidopsis_masked -1 trimmed_SRR6852086_1.fastq -2 trimmed_SRR6852085_2.fastq -p 16 -S SRR6852086.sam
-samtools view -@ 16 -uhS SRR6852086.sam | samtools sort -@ 16 -o sorted_SRR6852086
+samtools view -@ 16 -uhS SRR6852086.sam | samtools sort -@ 16 -o sorted_SRR6852086.bam
+samtools merge finalbamfile.bam sorted_SRR6852085.bam sorted_SRR6852086.bam
                                                                                              [ Read 17 lines ]
 ^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
 ^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell</pre>
@@ -468,7 +474,7 @@ We see that we aligned a large proportion of our reads to our masked genomes. Be
 
 <h2 id="Sixth_Point_Header">BRAKER2: Identifying and Predicting Genes with RNA-Seq Data</h2>
 We will be using <a href="https://academic.oup.com/bioinformatics/article/32/5/767/1744611">BRAKER2</a> for our identification and prediction of gene models using our RNA-Seq data. BRAKER2 utilizes <a href="http://opal.biology.gatech.edu/GeneMark/">GeneMark</a> as the unsupervised machine learning process which produces gene models without the need for any sample data. Following this step, <a href="http://bioinf.uni-greifswald.de/augustus/">AUGUSTUS</a>, a supervised machine learning process, is trained with the gene models provided by GeneMark, as well as the aligned RNA-Seq data. The symbiosis of these two processes enables for improved accuracy and sensititivy by providing a system against which it may check its own work. BRAKER requires writer privileges to the config directory. However, we cannot write in that path! To circumvent this we simply copy the AUGUSTUS executable path to our parent directory:
-<pre style="color: silver; background: black;">cp -rf /isg/shared/apps/augustus/3.2.3/ /home/CAM/your_username/</pre>
+<pre style="color: silver; background: black;">cp -rf /isg/shared/apps/augustus/3.2.3/ /home/CAM/$USER/</pre>
 
 
 We are now ready to run our process and may see our options for BRAKER with the following code:
@@ -497,37 +503,35 @@ BRAKER is a very computationally expensive tool. Because of this, we will want t
 #SBATCH --job-name=run_braker_run_SRR6852085
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -c 20
+#SBATCH -c 16
 #SBATCH --partition=himem5
 #SBATCH --mail-type=END
 #SBATCH --mail-user=
-#SBATCH --mem=256G
+#SBATCH --mem=125G
 #SBATCH -o run_braker_run_SRR6852085_%j.out
 #SBATCH -e run_braker_run_SRR6852085_%j.err
 module load BRAKER
-braker.pl --genome=athaliana.fa.masked --bam sorted_SRR6852085.bam --softmasking --AUGUSTUS_CONFIG_PATH=/home/CAM/your_username/3.2.3/config/
+
+mkdir /home/CAM/$USER/tmp/
+export TMPDIR=/home/CAM/$USER/tmp/
+export AUGUSTUS_CONFIG_PATH=/home/CAM/$USER/3.2.3/config/
+export AUGUSTUS_BIN_PATH=/home/CAM/$USER/3.2.3/bin/
+export AUGUSTUS_SCRIPTS_PATH=/home/CAM/$USER/3.2.3/scripts
+
+braker.pl --genome=athaliana.fa.masked --bam finalbamfile.bam --softmasking
 
 ^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
 ^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell</pre>
-Because we have two distinct biosamples, we want to run BRAKER for both samples. We could place both sample runs in a single Slurm script. However, it is much more efficient to run these processes in parallel. Because of this, we initialize our second script:
-<pre style="color: silver; background: black;">nano run_braker_run_SRR6852086.sh
-  GNU nano 2.3.1                                                 File: run_braker_run_SRR6852086.sh                                                                                               Modified  
 
-#!/bin/bash
-#SBATCH --job-name=run_braker_run_SRR6852086
-#SBATCH -N 1
-#SBATCH -n 1
-#SBATCH -c 20
-#SBATCH --partition=himem4
-#SBATCH --mail-type=END
-#SBATCH --mail-user=
-#SBATCH --mem=256g
-#SBATCH -o run_braker_run_SRR6852086_%j.out
-#SBATCH -e run_braker_run_SRR6852086_%j.err
-module load BRAKER
-braker.pl --genome=athaliana.fa.masked --bam sorted_SRR6852086.bam --softmasking --AUGUSTUS_CONFIG_PATH=/home/CAM/your_username/3.2.3/config/
+We initialize a temp directory to provide a writable path in which BRAKER can operate, and export our AUGUSTUS options as environment variables, letting BRAKER know that there is a writable AUGUSTUS path, as well. After the process has completed, you will have a 'braker' directory. Let's check it out:
+<pre style="color: silver; background: black;">cd braker
+ls
+Sp_9
+cd Sp_9
+ls
+augustus.hints.aa         augustus.hints.gtf  filterGenemark.stdout  genbank.good.gb.test   genemark.gb             genome.split.2.fa  genome.split.6.fa         secondetraining.stdout
+augustus.hints.cdsexons   bam_header.map      firstetraining.stdout  genbank.good.gb.train  genemark_hintsfile.gff  genome.split.3.fa  header.map                secondtest.stdout
+augustus.hints.codingseq  braker.log          firsttest.stdout       GeneMark-ET            genome.fa               genome.split.4.fa  hintsfile.gff             species
+augustus.hints.gff        errors              genbank.good.gb        GeneMark-ET.stdout     genome.split.1.fa       genome.split.5.fa  optimize_augustus.stdout</pre>
 
-
-^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Page                      ^K Cut Text                       ^C Cur Pos
-^X Exit                           ^J Justify                        ^W Where Is                       ^V Next Page                      ^U UnCut Text                     ^T To Spell</pre>
-Remember to run your processes on different nodes! Otherwise they are running consecutively and not concurrently! 
+We will not be going into each file here. However, it should be at least somewhat self-explanatory -- we have our predicted amino acid sequences, predicted introns, exons, coding sequences, and complete gff and gtf files. We are now going to use our 
